@@ -1,5 +1,7 @@
 EgyBruter is a powerful and efficient WordPress brute force tool designed to help ethical hackers and security researchers identify and address weak login credentials in WordPress websites. This tool utilizes multithreading to perform concurrent login attempts, making it fast and efficient for testing password combinations.
 Features
+![image](https://github.com/dragonked2/Egybruter/assets/66541902/26b4c217-3c03-4a2b-a46e-07ed8770d5e9)
+
 
     Fast and efficient WordPress brute force attacks.
     Multithreading for concurrent login attempts.
